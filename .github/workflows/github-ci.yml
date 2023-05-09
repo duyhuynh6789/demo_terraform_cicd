@@ -115,7 +115,20 @@ jobs:
           npm install
           npm run test
 
-      
+  scan-backend:
+    needs: test-backend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout the source
+        uses: actions/checkout@v3
+
+      - run: |
+          cd backend
+          npm install
+          npm audit fix --audit-level=critical --force
+          npm audit --audit-level=critical
+
   # This workflow contains a single job called "build"
   build-terraform:
     needs: [scan-frontend]
