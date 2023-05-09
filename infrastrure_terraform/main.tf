@@ -69,3 +69,34 @@ resource "aws_route_table_association" "public_subnet_2_public_table" {
   route_table_id = aws_route_table.public_route_table.id
   depends_on     = [aws_route_table.public_route_table, aws_subnet.public_subnet_2]
 }
+
+resource "aws_s3_bucket" "frontend" {
+  bucket = "tf-aokumo"
+
+  tags = {
+    Name        = "My bucket"
+    Environment = "Dev"
+  }
+}
+
+data "aws_iam_policy_document" "allow_access_from_another_account" {
+  statement {
+    principals {
+      type        = "AWS"
+      identifiers = ["123456789012"]
+    }
+
+    actions = [
+      "s3:GetObject"
+    ]
+
+    resources = [
+      "arn:aws:s3:::${aws_s3_bucket.frontend.arn}/*"
+    ]
+  }
+}
+
+resource "aws_s3_bucket_policy" "allow_access_from_another_account" {
+  bucket = aws_s3_bucket.frontend.id
+  policy = data.aws_iam_policy_document.allow_access_from_another_account.json
+}
