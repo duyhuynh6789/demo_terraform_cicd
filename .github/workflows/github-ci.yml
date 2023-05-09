@@ -95,7 +95,7 @@ jobs:
           key: backend-build
 
   test-backend:
-    needs: build-frontend
+    needs: build-backend
     runs-on: ubuntu-latest
     container: node:12.22
 
