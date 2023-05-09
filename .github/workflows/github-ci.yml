@@ -53,6 +53,26 @@ jobs:
           npm install
           npm run test
 
+  scan-frontend:
+    needs: test-frontend
+    runs-on: ubuntu-latest
+    container: node:14.16
+
+    steps:
+      - name: Checkout the source
+        uses: actions/checkout@v3
+
+      - uses: actions/cache@v3
+        with:
+          path: frontend/node_modules
+          key: frontend-build
+
+      - run: |
+          cd frontend
+          npm install
+          npm audit fix --audit-level=critical --force
+          npm audit --audit-level=critical
+
   # This workflow contains a single job called "build"
   build-terraform:
     # The type of runner that the job will run on
