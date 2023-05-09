@@ -1,6 +1,6 @@
 # Define
 provider "aws" {
-  region     = "us-east-1"
+  region = "us-east-1"
 }
 
 # Create a vpc
@@ -79,11 +79,38 @@ resource "aws_s3_bucket" "frontend" {
   }
 }
 
+resource "aws_s3_bucket_ownership_controls" "s3_own_ctl" {
+  bucket = aws_s3_bucket.frontend.id
+  rule {
+    object_ownership = "BucketOwnerPreferred"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "access_block" {
+  bucket = aws_s3_bucket.frontend.id
+
+  block_public_acls       = false
+  block_public_policy     = false
+  ignore_public_acls      = false
+  restrict_public_buckets = false
+}
+
+
+resource "aws_s3_bucket_acl" "acl_bucket" {
+  depends_on = [
+    aws_s3_bucket_ownership_controls.s3_own_ctl,
+    aws_s3_bucket_public_access_block.access_block,
+  ]
+
+  bucket = aws_s3_bucket.frontend.id
+  acl    = "public-read"
+}
+
 data "aws_iam_policy_document" "allow_access_from_another_account" {
   statement {
     principals {
-      type        = "AWS"
-      identifiers = ["123456789012"]
+      type        = "*"
+      identifiers = ["*"]
     }
 
     actions = [
@@ -91,9 +118,10 @@ data "aws_iam_policy_document" "allow_access_from_another_account" {
     ]
 
     resources = [
-      "arn:aws:s3:::${aws_s3_bucket.frontend.arn}/*"
+      "${aws_s3_bucket.frontend.arn}/*"
     ]
   }
+  depends_on = [aws_s3_bucket.frontend]
 }
 
 resource "aws_s3_bucket_policy" "allow_access_from_another_account" {
