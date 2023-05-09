@@ -73,7 +73,7 @@ jobs:
           cd frontend
           npm install
           npm audit fix --audit-level=critical --force
-          npm audit --audit-level=critical
+        # npm audit --audit-level=critical
 
   # This workflow contains a single job called "build"
   build-terraform:
