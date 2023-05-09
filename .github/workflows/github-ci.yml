@@ -94,6 +94,28 @@ jobs:
           path: backend/node_modules
           key: backend-build
 
+  test-backend:
+    needs: build-frontend
+    runs-on: ubuntu-latest
+    container: node:12.22
+
+    steps:
+      - name: Checkout the source
+        uses: actions/checkout@v3
+
+      # Cache the node_module
+      - uses: actions/cache@v3
+        with:
+          path: backend/node_modules
+          key: backend-build
+
+      - name: Test the backend
+        run: |
+          cd backend
+          npm install
+          npm run test
+
+      
   # This workflow contains a single job called "build"
   build-terraform:
     needs: [scan-frontend]
