@@ -42,26 +42,24 @@ jobs:
         run: |
           echo "Running on branch ${{ github.ref }}"
           if [ "${{ github.ref }}" = "refs/heads/production" ]; then
-            echo "::set-output name=env_name::production"
+            echo "branch_env=production" >> "$GITHUB_ENV"
           elif [ "${{ github.ref }}" = "refs/heads/develop" ]; then
-            echo "::set-output name=env_name::develop"
+            echo "branch_env=develop" >> "$GITHUB_ENV"
           elif [ "${{ github.ref }}" = "refs/heads/staging" ]; then
-            echo "::set-output name=env_name::staging"
+            echo "branch_env=staging" >> "$GITHUB_ENV"
           else
-             echo "::set-output name=env_name::sandbox"
+             echo "branch_env=sandbox" >> "$GITHUB_ENV"
           fi
-    outputs:
-      env_name: ${{ steps.setup.outputs.env_name }}
 
   show-env:
     runs-on: ubuntu-latest
     needs: [setup-env]
     name: Show env 1
-    environment: 
-      name: ${{ needs.setup-env.outputs.env_name }}
+    environment: ${{ env.branch_env }}
     steps:
       - name: Show the enviroment
         run: |
+          echo "BRANCH_NAME: ${{ env.branch_env}}"
           echo "ENV_NAME IS: $ENV_NAME"
           if [ "${{ secrets.SECRET_NAME }}" = "production_secret" ]; then
             echo "production_secret"
