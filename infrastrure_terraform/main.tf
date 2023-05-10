@@ -128,3 +128,15 @@ resource "aws_s3_bucket_policy" "attach_s3_policy" {
   bucket = aws_s3_bucket.frontend.id
   policy = data.aws_iam_policy_document.allow_access_from_another_account.json
 }
+
+resource "aws_s3_bucket_website_configuration" "website_config" {
+  bucket = aws_s3_bucket.frontend.id
+
+  index_document {
+    suffix = "index.html"
+  }
+
+  error_document {
+    key = "error.html"
+  }
+}
