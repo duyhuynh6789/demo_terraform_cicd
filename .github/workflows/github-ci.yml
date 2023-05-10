@@ -34,7 +34,7 @@ on:
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   setup-env:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     name: Checkout and setup enviroment
     steps:
       - name: Setup the enviroment base on the branch
@@ -42,33 +42,36 @@ jobs:
         run: |
           echo "Running on branch ${{ github.ref }}"
           if [ "${{ github.ref }}" = "refs/heads/production" ]; then
-            echo "branch_env=production" >> "$GITHUB_ENV"
+            echo "branch_env=production" >> "$GITHUB_OUTPUT"
           elif [ "${{ github.ref }}" = "refs/heads/develop" ]; then
-            echo "branch_env=develop" >> "$GITHUB_ENV"
+            echo "branch_env=develop" >> "$GITHUB_OUTPUT"
           elif [ "${{ github.ref }}" = "refs/heads/staging" ]; then
-            echo "branch_env=staging" >> "$GITHUB_ENV"
+            echo "branch_env=staging" >> "$GITHUB_OUTPUT"
           else
-             echo "branch_env=sandbox" >> "$GITHUB_ENV"
+             echo "branch_env=sandbox" >> "$GITHUB_OUTPUT"
           fi
+    outputs:
+      branch_env: ${{ steps.setup.outputs.branch_env }}
 
   show-env:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [setup-env]
     name: Show env 1
-    environment: ${{ env.branch_env }}
+    environment:
+      name: ${{ needs.setup-env.outputs.branch_env }}
     steps:
       - name: Show the enviroment
         run: |
-          echo "BRANCH_NAME: ${{ env.branch_env}}"
-          echo "ENV_NAME IS: $ENV_NAME"
+          echo "TEST: $name"
+          echo "ENV_NAME IS: ${{ env.ENV_NAME }}"
           if [ "${{ secrets.SECRET_NAME }}" = "production_secret" ]; then
-            echo "production_secret"
+            echo "production_secret is here"
           elif [ "${{ secrets.SECRET_NAME }}" = "staging_secret" ]; then
-            echo "staging_secret"
+            echo "staging_secret  is here"
           elif [ "${{ secrets.SECRET_NAME }}" = "develop_secret" ]; then
-            echo "develop_secret"
+            echo "develop_secret  is here"
           elif [ "${{ secrets.SECRET_NAME }}" = "sandbox_secret" ]; then
-            echo "sandbox_secret"
+            echo "sandbox_secret  is here"
           else
              echo "nothing"
           fi
