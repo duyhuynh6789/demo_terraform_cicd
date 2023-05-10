@@ -124,7 +124,7 @@ data "aws_iam_policy_document" "allow_access_from_another_account" {
   depends_on = [aws_s3_bucket.frontend]
 }
 
-resource "aws_s3_bucket_policy" "allow_access_from_another_account" {
+resource "aws_s3_bucket_policy" "attach_s3_policy" {
   bucket = aws_s3_bucket.frontend.id
   policy = data.aws_iam_policy_document.allow_access_from_another_account.json
 }
