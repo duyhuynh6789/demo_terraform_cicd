@@ -4,3 +4,5 @@ infrastrure_terraform/terraform.tfplan
 infrastrure_terraform/terraform.tfstate
 infrastrure_terraform/terraform.tfstate.backup
 node_modules/
+frontend/dist/
+frontend/package-lock.json
