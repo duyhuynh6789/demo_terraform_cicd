@@ -16,15 +16,14 @@ on:
       - 'features/**'
 
   # Allows you to run this workflow manually from the Actions tab
-  # workflow_dispatch:
-  #   inputs:
-  #     BRANCH:
-  #       type: choice
-  #       required: true
-  #       description: Deploy Target Branch
-  #       options:
-  #         - staging
-  #         - main
+  workflow_dispatch:
+    inputs:
+      BRANCH:
+        type: choice
+        required: true
+        description: Deploy Target Branch
+        options:
+          - main
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
