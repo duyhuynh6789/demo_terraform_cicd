@@ -7,272 +7,120 @@ on:
   # Triggers the workflow on push or pull request events but only for the "main" branch
   push:
     branches: 
-      - main
+      - develop
+      - sandbox
+      - production
+      - staging
       - 'features/**'
 
   pull_request:
     branches:
-      - main
+      - develop
+      - sandbox
+      - production
+      - staging
       - 'features/**'
 
   # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch:
-    inputs:
-      BRANCH:
-        type: choice
-        required: true
-        description: Deploy Target Branch
-        options:
-          - main
+  # workflow_dispatch:
+  #   inputs:
+  #     BRANCH:
+  #       type: choice
+  #       required: true
+  #       description: Deploy Target Branch
+  #       options:
+  #         - main
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  build-frontend:
+  setup-env:
     runs-on: ubuntu-latest
-    container: node:12.22
-
+    name: Checkout and setup enviroment
     steps:
-      - name: Checkout the source
-        uses: actions/checkout@v3
-
-      - run: |
-          cd frontend
-          npm cache clean -f
-          npm install
-          npm run build
-      # Cache the node_module
-      - uses: actions/cache@v3
-        with:
-          path: frontend/node_modules
-          key: frontend-build
-    
-  test-frontend:
-    needs: build-frontend
-    runs-on: ubuntu-latest
-    container: node:12.22
-
-    steps:
-      - name: Checkout the source
-        uses: actions/checkout@v3
-      
-      - uses: actions/cache@v3
-        with:
-          path: frontend/node_modules
-          key: frontend-build
-
-      - run: |
-          cd frontend
-          npm install
-          npm run test
-
-  scan-frontend:
-    needs: test-frontend
-    runs-on: ubuntu-latest
-    container: node:12.22
-
-    steps:
-      - name: Checkout the source
-        uses: actions/checkout@v3
-
-      - name: Checkout the cache
-        uses: actions/cache@v3
-        with:
-          path: frontend/node_modules
-          key: frontend-build
-
-      - name: Run scan
+      - name: Setup the enviroment base on the branch
+        id: setup
         run: |
-          cd frontend
-          npm install
-          npm audit fix --audit-level=critical --force
-        # npm audit --audit-level=critical
+          echo "Running on branch ${{ github.ref }}"
+          if [ "${{ github.ref }}" = "refs/heads/production" ]; then
+            echo "::set-output name=env_name::production"
+          elif [ "${{ github.ref }}" = "refs/heads/develop" ]; then
+            echo "::set-output name=env_name::develop"
+          elif [ "${{ github.ref }}" = "refs/heads/staging" ]; then
+            echo "::set-output name=env_name::staging"
+          else
+             echo "::set-output name=env_name::sandbox"
+          fi
+    outputs:
+      env_name: ${{ steps.setup.outputs.env_name }}
 
-  build-backend:
+  show-env:
     runs-on: ubuntu-latest
-    container: node:12.22
-
+    needs: [setup-env]
+    name: Show env 1
+    environment: 
+      name: ${{ needs.setup-env.outputs.env_name }}
     steps:
-      - name: Checkout the source
-        uses: actions/checkout@v3
-
-      - run: |
-          cd backend
-          npm cache clean -f
-          npm install
-          npm run build
-      # Cache the node_module
-      - uses: actions/cache@v3
-        with:
-          path: backend/node_modules
-          key: backend-build
-
-  test-backend:
-    needs: build-backend
-    runs-on: ubuntu-latest
-    container: node:12.22
-
-    steps:
-      - name: Checkout the source
-        uses: actions/checkout@v3
-
-      # Cache the node_module
-      - uses: actions/cache@v3
-        with:
-          path: backend/node_modules
-          key: backend-build
-
-      - name: Test the backend
+      - name: Show the enviroment
         run: |
-          cd backend
-          npm install
-          npm run test
-
-  scan-backend:
-    needs: test-backend
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout the source
-        uses: actions/checkout@v3
-
-      - run: |
-          cd backend
-          npm install
-          npm audit fix --audit-level=critical --force
-          npm audit --audit-level=critical
-
+          echo "ENV_NAME IS: $ENV_NAME"
+          if [ "${{ secrets.SECRET_NAME }}" = "production_secret" ]; then
+            echo "production_secret"
+          elif [ "${{ secrets.SECRET_NAME }}" = "staging_secret" ]; then
+            echo "staging_secret"
+          elif [ "${{ secrets.SECRET_NAME }}" = "develop_secret" ]; then
+            echo "develop_secret"
+          elif [ "${{ secrets.SECRET_NAME }}" = "sandbox_secret" ]; then
+            echo "sandbox_secret"
+          else
+             echo "nothing"
+          fi
   # This workflow contains a single job called "build"
-  build-terraform:
-    if: github.ref == 'refs/heads/main'
-    needs: [scan-frontend, scan-backend]
-    # The type of runner that the job will run on
-    runs-on: ubuntu-latest
+  # build-terraform:
+  #   if: github.ref == 'refs/heads/main'
+  #   # The type of runner that the job will run on
+  #   runs-on: ubuntu-latest
+  #   env:
+  #     AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  #     AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  #     AWS_DEFAULT_REGION: ${{ secrets.REGION }}
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
-    steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - name: Checkout the source
-        uses: actions/checkout@v3
+  #   # Steps represent a sequence of tasks that will be executed as part of the job
+  #   steps:
+  #     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+  #     - name: Checkout the source
+  #       uses: actions/checkout@v3
 
-      # Install the latest version of Terraform CLI and configure the Terraform CLI configuration.
-      - name: Install manual terraform
-        run: |
-          wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg
-          echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
-          sudo apt update && sudo apt install terraform
+  #     # Install the latest version of Terraform CLI and configure the Terraform CLI configuration.
+  #     - name: Install manual terraform
+  #       run: |
+  #         wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg
+  #         echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+  #         sudo apt update && sudo apt install terraform
 
-      - name: AWS Plan Copy
-        id: copyfrom
-        run: aws s3 cp s3://aokumo-develop/terraform.tfstate infrastrure_terraform/terraform.tfstate
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: ${{ secrets.REGION }}
-        continue-on-error: true
+  #     - name: AWS Plan Copy
+  #       id: copyfrom
+  #       run: aws s3 cp s3://aokumo-develop/terraform.tfstate infrastrure_terraform/terraform.tfstate
+  #       continue-on-error: true
 
-      # Initialize a new or existing Terraform working directory by creating initial files, loading any remote state, downloading modules, etc.
-      - name: Terraform Init
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: ${{ secrets.REGION }}
-        run: |
-          cd infrastrure_terraform
-          terraform init -input=false
+  #     # Initialize a new or existing Terraform working directory by creating initial files, loading any remote state, downloading modules, etc.
+  #     - name: Terraform Init
+  #       run: echo "Run Terraform Init"
+  #       # cd infrastrure_terraform
+  #       # terraform init -input=false
 
-      # Generate Terraform Plan and store in .tfplan file
-      - name: Terraform Plan
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: ${{ secrets.REGION }}
-        run: |
-          cd infrastrure_terraform 
-          ls -al
-          terraform plan -var-file="dev.tfvars"
+  #     # Generate Terraform Plan and store in .tfplan file
+  #     - name: Terraform Plan
+  #       run: echo "Run Terraform Plan"
+  #       # cd infrastrure_terraform 
+  #       # ls -al
+  #       # terraform plan -var-file="dev.tfvars"
 
-      - name: Terraform Apply
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: ${{ secrets.REGION }}
-        run: |
-          cd infrastrure_terraform
-          terraform apply -var-file="dev.tfvars" -auto-approve -input=false
+  #     - name: Terraform Apply
+  #       run: |
+  #         cd infrastrure_terraform
+  #         terraform apply -var-file="dev.tfvars" -auto-approve -input=false
 
-      - name: AWS Plan Copy
-        # if: github.event_name == 'push' && steps.apply.outcome == 'success'
-        run: aws s3 cp infrastrure_terraform/terraform.tfstate s3://aokumo-develop/terraform.tfstate
-        id: copy
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: ${{ secrets.REGION }}
-
-  config-infra:
-    needs: [build-terraform]
-    # The type of runner that the job will run on
-    runs-on: ubuntu-latest
-
-    # Steps represent a sequence of tasks that will be executed as part of the job
-    steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - name: Checkout the source
-        uses: actions/checkout@v3
-
-      - name: Terraform Plan
-        run: echo "Config step"
-
-  deploy-frontend:
-    needs: [config-infra]
-    # The type of runner that the job will run on
-    runs-on: ubuntu-latest
-    container: python:3.11-rc-alpine
-    env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      AWS_DEFAULT_REGION: ${{ secrets.REGION }}
-
-    # Steps represent a sequence of tasks that will be executed as part of the job
-    steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - name: Checkout the source
-        uses: actions/checkout@v3
-
-      - name: Install dependencies
-        run: |
-          apk add --update tar gzip ansible nodejs npm curl
-          pip3 install awscli
-
-      - name: Deploy frontend objects
-        run: |
-          cd frontend
-          npm install
-          npm run build
-          aws s3 cp dist s3://tf-aokumo --recursive
-
-  deploy-backend:
-    needs: [config-infra]
-    # The type of runner that the job will run on
-    runs-on: ubuntu-latest
-
-    # Steps represent a sequence of tasks that will be executed as part of the job
-    steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - name: Checkout the source
-        uses: actions/checkout@v3
-
-      - name: Terraform Plan
-        run: echo "deploy backend step"
-
-  smoke-test:
-    needs: [deploy-backend, deploy-frontend]
-    runs-on: ubuntu-latest
-
-    steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - name: Checkout the source
-        uses: actions/checkout@v3
-
-      - name: Smoke test
-        run: echo "do test"
+  #     - name: AWS Plan Copy
+  #       # if: github.event_name == 'push' && steps.apply.outcome == 'success'
+  #       run: aws s3 cp infrastrure_terraform/terraform.tfstate s3://aokumo-develop/terraform.tfstate
+  #       id: copy
