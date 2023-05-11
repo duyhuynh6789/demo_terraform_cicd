@@ -79,7 +79,24 @@ jobs:
           cd terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}
           terraform validate
 
+  tf-sec:
+    runs-on: ubuntu-latest
+    name: Terraform security check
+    needs: [ tf-validate ]
+    environment:
+      name: ${{ github.ref }}
+    steps:
+      - name: Checkout the source
+        uses: actions/checkout@v3
 
+      - name: Install tfsec
+        run: |
+          curl -s https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install_linux.sh | bash
+      
+      - name: tsec scan
+        run: |
+          cd terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}
+          tfsec .
   # This workflow contains a single job called "build"
   # build-terraform:
   #   if: github.ref == 'refs/heads/main'

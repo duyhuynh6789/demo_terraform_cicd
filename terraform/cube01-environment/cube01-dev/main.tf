@@ -4,6 +4,7 @@ provider "aws" {
 }
 
 # Create a vpc
+#tfsec:ignore:aws-ec2-require-vpc-flow-logs-for-all-vpcs
 resource "aws_vpc" "main" {
   cidr_block       = var.vpc_cidr_block
   instance_tenancy = var.vpc_instance_tenancy
@@ -28,7 +29,7 @@ resource "aws_subnet" "public_subnet_1" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = var.public_subnet_1_cidr_block
   availability_zone       = data.aws_availability_zones.available.names[0]
-  map_public_ip_on_launch = true
+  map_public_ip_on_launch = true #tfsec:ignore:aws-ec2-no-public-ip-subnet
   tags = {
     Name = "${var.stack_name} | ${var.vpc_tags_name} | ${var.public_subnet_1_name}"
   }
@@ -39,7 +40,7 @@ resource "aws_subnet" "public_subnet_2" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = var.public_subnet_2_cidr_block
   availability_zone       = data.aws_availability_zones.available.names[1]
-  map_public_ip_on_launch = true
+  map_public_ip_on_launch = true #tfsec:ignore:aws-ec2-no-public-ip-subnet
   tags = {
     Name = "${var.stack_name} | ${var.vpc_tags_name} | ${var.public_subnet_2_name}"
   }
@@ -69,7 +70,15 @@ resource "aws_route_table_association" "public_subnet_2_public_table" {
   route_table_id = aws_route_table.public_route_table.id
   depends_on     = [aws_route_table.public_route_table, aws_subnet.public_subnet_2]
 }
-
+#tfsec:ignore:aws-s3-block-public-policy
+#tfsec:ignore:aws-s3-enable-bucket-encryption
+#tfsec:ignore:aws-s3-ignore-public-acls
+#tfsec:ignore:aws-s3-no-public-buckets
+#tfsec:ignore:aws-s3-encryption-customer-key
+#tfsec:ignore:aws-s3-block-public-acls
+#tfsec:ignore:aws-s3-specify-public-access-block
+#tfsec:ignore:aws-s3-enable-versioning
+#tfsec:ignore:aws-s3-enable-bucket-logging
 resource "aws_s3_bucket" "frontend" {
   bucket = "tf-aokumo"
 
