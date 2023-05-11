@@ -11,7 +11,6 @@ on:
       - sandbox
       - production
       - staging
-      - 'features/**'
 
   pull_request:
     branches:
@@ -19,7 +18,6 @@ on:
       - sandbox
       - production
       - staging
-      - 'features/**'
 
   # Allows you to run this workflow manually from the Actions tab
   # workflow_dispatch:
@@ -146,6 +144,7 @@ jobs:
   tf-deployment:
     runs-on: ubuntu-latest
     name: Terraform apply
+    if: github.event_name == 'push' || github.event.pull_request.merged == true
     # needs: [ tf-plan ]
     needs: [ tf-validate, tf-sec, tf-format ]
     environment:
