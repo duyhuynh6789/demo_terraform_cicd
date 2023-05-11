@@ -112,6 +112,11 @@ jobs:
           echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
           sudo apt update && sudo apt install terraform
 
+      - name: AWS Plan Copy
+        id: copyfrom
+        run: aws s3 cp s3://aokumo-develop/terraform.tfstate infrastrure_terraform/terraform.tfstate
+        continue-on-error: true
+
       - name: Terraform Init
         run: |
           cd terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}
