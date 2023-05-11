@@ -112,9 +112,9 @@ jobs:
           echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
           sudo apt update && sudo apt install terraform
 
-      - name: AWS Plan Copy
+      - name: Get tfstate
         id: copyfrom
-        run: aws s3 cp s3://aokumo-develop/terraform.tfstate infrastrure_terraform/terraform.tfstate
+        run: aws s3 cp s3://${{ vars.DEPLOYMENT_BUCKET }}/${{ vars.ENV_NAME }}/terraform.tfstate terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}/terraform.tfstate
         continue-on-error: true
 
       - name: Terraform Init
@@ -127,9 +127,63 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: ${{ secrets.REGION }}
+          ENV: ${{ vars.ENV_NAME }}
         run: |
           cd terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}
           make plan
+
+      - name: Cache the terraform plan file
+        uses: actions/cache@v3
+        with:
+          path: terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}/terraform.tfplan
+          key: tf-plan-cache
+
+  tf-apply:
+    runs-on: ubuntu-latest
+    name: Terraform apply
+    needs: [ tf-plan ]
+    environment:
+      name: ${{ github.ref }}
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: ${{ secrets.REGION }}
+      ENV: ${{ vars.ENV_NAME }}
+    steps:
+      - name: Checkout the source
+        uses: actions/checkout@v3
+
+      - name: Install manual terraform
+        run: |
+          wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+          sudo apt update && sudo apt install terraform
+
+      - name: Get tfstate
+        id: copyfrom
+        run: |
+          echo "-----------------"
+          echo $ENV
+          echo ${{ vars.DEPLOYMENT_BUCKET }}
+          echo "-----------------"
+          aws s3 cp s3://${{ vars.DEPLOYMENT_BUCKET }}/${{ vars.ENV_NAME }}/terraform.tfstate terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}/terraform.tfstate
+        continue-on-error: true
+
+      - name: Cache the terraform plan file
+        uses: actions/cache@v3
+        with:
+          path: terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}/terraform.tfplan
+          key: tf-plan-cache
+
+      - name: Terraform Apply
+        run: |
+          cd terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}
+          make apply
+
+      - name: AWS Plan Copy
+        # if: github.event_name == 'push' && steps.apply.outcome == 'success'
+        run: aws s3 cp terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}/terraform.tfstate s3://aokumo-develop/${{ vars.ENV_NAME }}/terraform.tfstate
+        id: copy
 
   # This workflow contains a single job called "build"
   # build-terraform:

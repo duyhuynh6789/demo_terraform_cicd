@@ -20,7 +20,7 @@ resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.main.id
 
   tags = {
-    Name = "${var.stack_name} | ${var.igw_tags_name}"
+    Name = "${var.stack_name} | ${var.env} |${var.igw_tags_name}"
   }
   depends_on = [aws_vpc.main]
 }
@@ -31,7 +31,7 @@ resource "aws_subnet" "public_subnet_1" {
   availability_zone       = data.aws_availability_zones.available.names[0]
   map_public_ip_on_launch = true #tfsec:ignore:aws-ec2-no-public-ip-subnet
   tags = {
-    Name = "${var.stack_name} | ${var.vpc_tags_name} | ${var.public_subnet_1_name}"
+    Name = "${var.stack_name} | ${var.vpc_tags_name} | ${var.env} | ${var.public_subnet_1_name}"
   }
   depends_on = [aws_vpc.main]
 }
@@ -42,7 +42,7 @@ resource "aws_subnet" "public_subnet_2" {
   availability_zone       = data.aws_availability_zones.available.names[1]
   map_public_ip_on_launch = true #tfsec:ignore:aws-ec2-no-public-ip-subnet
   tags = {
-    Name = "${var.stack_name} | ${var.vpc_tags_name} | ${var.public_subnet_2_name}"
+    Name = "${var.stack_name} | ${var.vpc_tags_name} | ${var.env} | ${var.public_subnet_2_name}"
   }
   depends_on = [aws_vpc.main]
 }
@@ -54,7 +54,7 @@ resource "aws_route_table" "public_route_table" {
     gateway_id = aws_internet_gateway.igw.id
   }
   tags = {
-    Name = "${var.stack_name} | ${var.vpc_tags_name} | ${var.public_route_table_name}"
+    Name = "${var.stack_name} | ${var.vpc_tags_name} | ${var.env} | ${var.public_route_table_name}"
   }
   depends_on = [aws_internet_gateway.igw]
 }
@@ -80,7 +80,7 @@ resource "aws_route_table_association" "public_subnet_2_public_table" {
 #tfsec:ignore:aws-s3-enable-versioning
 #tfsec:ignore:aws-s3-enable-bucket-logging
 resource "aws_s3_bucket" "frontend" {
-  bucket = "tf-aokumo"
+  bucket = "tf-aokumo-${var.env}"
 
   tags = {
     Name        = "My bucket"
