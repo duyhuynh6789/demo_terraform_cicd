@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Terraform format
     environment:
-      name: ${{ github.ref }}
+      name: ${{ github.event.pull_request.base.ref || github.ref }}
     steps:
       - name: Checkout the source
         uses: actions/checkout@v3
