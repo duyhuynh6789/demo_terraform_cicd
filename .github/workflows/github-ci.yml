@@ -33,71 +33,37 @@ on:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  setup-env:
-    runs-on: ubuntu-latest
-    name: Checkout and setup enviroment
-    steps:
-      - name: Setup the enviroment base on the branch
-        id: setup
-        run: |
-          echo "Running on branch ${{ github.ref }}"
-          if [ "${{ github.ref }}" = "refs/heads/production" ]; then
-            echo "branch_env=production" >> "$GITHUB_OUTPUT"
-          elif [ "${{ github.ref }}" = "refs/heads/develop" ]; then
-            echo "branch_env=develop" >> "$GITHUB_OUTPUT"
-          elif [ "${{ github.ref }}" = "refs/heads/staging" ]; then
-            echo "branch_env=staging" >> "$GITHUB_OUTPUT"
-          else
-             echo "branch_env=sandbox" >> "$GITHUB_OUTPUT"
-          fi
-    outputs:
-      branch_env: ${{ steps.setup.outputs.branch_env }}
+  # setup-env:
+  #   runs-on: ubuntu-latest
+  #   name: Checkout and setup enviroment
+  #   steps:
+  #     - name: Setup the enviroment base on the branch
+  #       id: setup
+  #       run: |
+  #         echo "Running on branch ${{ github.ref }}"
+  #         if [ "${{ github.ref }}" = "refs/heads/production" ]; then
+  #           echo "branch_env=production" >> "$GITHUB_OUTPUT"
+  #         elif [ "${{ github.ref }}" = "refs/heads/develop" ]; then
+  #           echo "branch_env=develop" >> "$GITHUB_OUTPUT"
+  #         elif [ "${{ github.ref }}" = "refs/heads/staging" ]; then
+  #           echo "branch_env=staging" >> "$GITHUB_OUTPUT"
+  #         else
+  #            echo "branch_env=sandbox" >> "$GITHUB_OUTPUT"
+  #         fi
+  #   outputs:
+  #     branch_env: ${{ steps.setup.outputs.branch_env }}
 
   show-env:
     runs-on: ubuntu-latest
-    needs: [setup-env]
+    # needs: [setup-env]
     name: Show env 1
     environment:
-      name: ${{ needs.setup-env.outputs.branch_env }}
+      name: ${{ github.ref }}
     steps:
       - name: Show the enviroment
         run: |
-          if [ "${{ secrets.SECRET_NAME }}" = "production_secret" ]; then
-            echo "production secret is here"
-          elif [ "${{ secrets.SECRET_NAME }}" = "staging_secret" ]; then
-            echo "staging secret  is here"
-          elif [ "${{ secrets.SECRET_NAME }}" = "develop_secret" ]; then
-            echo "develop secret  is here"
-          elif [ "${{ secrets.SECRET_NAME }}" = "sandbox_secret" ]; then
-            echo "sandbox secret  is here"
-          else
-             echo "nothing"
-          fi
-
-          if [ "$name" = "production" ]; then
-            echo "production is here"
-          elif [ "$name" = "staging" ]; then
-            echo "staging  is here"
-          elif [ "$name" = "develop" ]; then
-            echo "develop_  is here"
-          elif [ "$name" = "sandbox" ]; then
-            echo "sandbox  is here"
-          else
-             echo "nothing env name"
-          fi
-
-          if [ "$ENV_NAME" = "production" ]; then
-            echo "production 2 is here"
-          elif [ $ENV_NAME = "staging" ]; then
-            echo "staging 2  is here"
-          elif [ $ENV_NAME = "develop" ]; then
-            echo "develop 2 is here"
-          elif [ $ENV_NAME = "sandbox" ]; then
-            echo "sandbox 2  is here"
-          else
-             echo "nothing 2 env name"
-          fi
-
+          echo " ${{ vars.ENV_NAME }}"
+          
 
   # This workflow contains a single job called "build"
   # build-terraform:
