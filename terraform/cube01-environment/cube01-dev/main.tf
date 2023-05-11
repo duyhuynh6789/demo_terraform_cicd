@@ -79,64 +79,64 @@ resource "aws_s3_bucket" "frontend" {
   }
 }
 
-resource "aws_s3_bucket_ownership_controls" "s3_own_ctl" {
-  bucket = aws_s3_bucket.frontend.id
-  rule {
-    object_ownership = "BucketOwnerPreferred"
-  }
-}
+# resource "aws_s3_bucket_ownership_controls" "s3_own_ctl" {
+#   bucket = aws_s3_bucket.frontend.id
+#   rule {
+#     object_ownership = "BucketOwnerPreferred"
+#   }
+# }
 
-resource "aws_s3_bucket_public_access_block" "access_block" {
-  bucket = aws_s3_bucket.frontend.id
+# resource "aws_s3_bucket_public_access_block" "access_block" {
+#   bucket = aws_s3_bucket.frontend.id
 
-  block_public_acls       = false
-  block_public_policy     = false
-  ignore_public_acls      = false
-  restrict_public_buckets = false
-}
+#   block_public_acls       = false
+#   block_public_policy     = false
+#   ignore_public_acls      = false
+#   restrict_public_buckets = false
+# }
 
 
-resource "aws_s3_bucket_acl" "acl_bucket" {
-  depends_on = [
-    aws_s3_bucket_ownership_controls.s3_own_ctl,
-    aws_s3_bucket_public_access_block.access_block,
-  ]
+# resource "aws_s3_bucket_acl" "acl_bucket" {
+#   depends_on = [
+#     aws_s3_bucket_ownership_controls.s3_own_ctl,
+#     aws_s3_bucket_public_access_block.access_block,
+#   ]
 
-  bucket = aws_s3_bucket.frontend.id
-  acl    = "public-read"
-}
+#   bucket = aws_s3_bucket.frontend.id
+#   acl    = "public-read"
+# }
 
-data "aws_iam_policy_document" "allow_access_from_another_account" {
-  statement {
-    principals {
-      type        = "*"
-      identifiers = ["*"]
-    }
+# data "aws_iam_policy_document" "allow_access_from_another_account" {
+#   statement {
+#     principals {
+#       type        = "*"
+#       identifiers = ["*"]
+#     }
 
-    actions = [
-      "s3:GetObject"
-    ]
+#     actions = [
+#       "s3:GetObject"
+#     ]
 
-    resources = [
-      "${aws_s3_bucket.frontend.arn}/*"
-    ]
-  }
-  depends_on = [aws_s3_bucket.frontend]
-}
+#     resources = [
+#       "${aws_s3_bucket.frontend.arn}/*"
+#     ]
+#   }
+#   depends_on = [aws_s3_bucket.frontend]
+# }
 
-resource "aws_s3_bucket_policy" "attach_s3_policy" {
-  bucket = aws_s3_bucket.frontend.id
-  policy = data.aws_iam_policy_document.allow_access_from_another_account.json
-}
+# resource "aws_s3_bucket_policy" "attach_s3_policy" {
+#   bucket = aws_s3_bucket.frontend.id
+#   policy = data.aws_iam_policy_document.allow_access_from_another_account.json
+# }
 
-resource "aws_s3_bucket_website_configuration" "website_config" {
-  bucket = aws_s3_bucket.frontend.id
+# resource "aws_s3_bucket_website_configuration" "website_config" {
+#   bucket = aws_s3_bucket.frontend.id
 
-  index_document {
-    suffix = "index.html"
-  }
+#   index_document {
+#     suffix = "index.html"
+#   }
 
-  error_document {
-    key = "error.html"
-  }
-}
+#   error_document {
+#     key = "error.html"
+#   }
+# }
