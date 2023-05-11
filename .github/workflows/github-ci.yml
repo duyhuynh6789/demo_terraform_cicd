@@ -102,6 +102,10 @@ jobs:
     needs: [ tf-validate, tf-sec, tf-format ]
     environment:
       name: ${{ github.ref }}
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: ${{ secrets.REGION }}
     steps:
       - name: Checkout the source
         uses: actions/checkout@v3
@@ -123,20 +127,16 @@ jobs:
           make init
 
       - name: Terraform Plan
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: ${{ secrets.REGION }}
-          ENV: ${{ vars.ENV_NAME }}
         run: |
           cd terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}
           make plan
+          ls -al
 
       - name: Cache the terraform plan file
         uses: actions/cache@v3
         with:
           path: terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}/terraform.tfplan
-          key: tf-plan-cache
+          key: tf-plan-cache-${{ GITHUB_SHA }}
 
   tf-apply:
     runs-on: ubuntu-latest
@@ -173,16 +173,17 @@ jobs:
         uses: actions/cache@v3
         with:
           path: terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}/terraform.tfplan
-          key: tf-plan-cache
+          key: tf-plan-cache-${{ GITHUB_SHA }}
 
       - name: Terraform Apply
         run: |
           cd terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}
+          ls -al
           make apply
 
       - name: AWS Plan Copy
         # if: github.event_name == 'push' && steps.apply.outcome == 'success'
-        run: aws s3 cp terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}/terraform.tfstate s3://aokumo-develop/${{ vars.ENV_NAME }}/terraform.tfstate
+        run: aws s3 cp terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}/terraform.tfstate s3://${{ vars.DEPLOYMENT_BUCKET }}/${{ vars.ENV_NAME }}/terraform.tfstate
         id: copy
 
   # This workflow contains a single job called "build"
