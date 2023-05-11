@@ -1,0 +1,137 @@
+SERVICE ?= service
+BUCKET ?= ${SERVICE}-${ENV}-terraform
+BUCKET_KEY ?= applications/${APPLICATION}/terraform.tfstate
+REGION ?= ap-northeast-1
+
+.PHONY: all
+all: plan
+
+.PHONY: tfvars
+tfvars: checkenv ${ENV}.tfvars
+
+.PHONY: get
+get:
+	terraform get
+
+.PHONY: init
+init: checkenv tfinit
+
+.PHONY: plan
+plan: checkenv .${BUCKET_KEY} tfvars get
+	terraform plan \
+		-var="env=${ENV}" \
+		-var="service=${SERVICE}" \
+		-var="region=${REGION}" \
+		-var="dns_domain=${DOMAIN}" \
+		-var-file="../core.tfvars" -var-file="${ENV}.tfvars" -out terraform.tfplan
+
+.PHONY: prevent-destroy-plan
+prevent-destroy-plan: checkenv .${BUCKET_KEY} tfvars get
+	terraform plan -destroy \
+		-target=${TARGET} \
+		-var="env=${ENV}" \
+		-var="service=${SERVICE}" \
+		-var="region=${REGION}" \
+		-var="dns_domain=${DOMAIN}" \
+		-var-file="../core.tfvars" -var-file="${ENV}.tfvars" -out terraform.tfplan
+
+.PHONY: import
+import: checkenv .${BUCKET_KEY} tfvars
+	terraform import \
+		-var="service=${SERVICE}" \
+		-var="region=${REGION}" \
+		-var="dns_domain=${DOMAIN}" \
+		-var-file="../core.tfvars" -var-file="${ENV}.tfvars" \
+		${TARGET} \
+		${RESOURCE}
+
+.PHONY: state-move
+state-move: checkenv .${BUCKET_KEY} tfvars
+	terraform state mv \
+		-var="service=${SERVICE}" \
+		-var="region=${REGION}" \
+		-var="dns_domain=${DOMAIN}" \
+		-var-file="../core.tfvars" -var-file="${ENV}.tfvars" \
+		${SOURCE} \
+		${DESTINATION}
+
+.PHONY: state-remove
+state-remove: checkenv .${BUCKET_KEY} tfvars
+	terraform state rm \
+		-var="service=${SERVICE}" \
+		-var="region=${REGION}" \
+		-var="dns_domain=${DOMAIN}" \
+		-var-file="../core.tfvars" -var-file="${ENV}.tfvars" \
+		${TARGET}
+
+.PHONY: apply
+apply: checkenv .${BUCKET_KEY} tfvars get
+	terraform apply terraform.tfplan
+	rm terraform.tfplan
+
+.PHONY: destroy
+destroy: checkenv .${BUCKET_KEY} tfvars get
+	terraform plan -destroy \
+		-var="env=${ENV}" \
+		-var="service=${SERVICE}" \
+		-var="region=${REGION}" \
+		-var="dns_domain=${DOMAIN}" \
+		-var-file="../core.tfvars" -var-file="${ENV}.tfvars"
+	terraform destroy \
+		-var="env=${ENV}" \
+		-var="service=${SERVICE}" \
+		-var="region=${REGION}" \
+		-var="dns_domain=${DOMAIN}" \
+		-var-file="../core.tfvars" -var-file="${ENV}.tfvars"
+
+.PHONY: prevent-destroy-destroy
+prevent-destroy-destroy: checkenv .${BUCKET_KEY} tfvars get
+	terraform destroy \
+		-target=${TARGET} \
+		-var="env=${ENV}" \
+		-var="service=${SERVICE}" \
+		-var="region=${REGION}" \
+		-var="dns_domain=${DOMAIN}" \
+		-var-file="../core.tfvars" -var-file="${ENV}.tfvars"
+
+.${BUCKET_KEY}:
+	@terraform init \
+		-backend-config="bucket=${BUCKET}" \
+		-backend-config="key=${BUCKET_KEY}" \
+		-backend-config="region=${REGION}"
+
+.PHONY: tfinit
+tfinit:
+	terraform init \
+		-backend-config="bucket=${BUCKET}" \
+		-backend-config="key=${BUCKET_KEY}" \
+		-backend-config="region=${REGION}"
+
+.PHONY: tfinit-upgrade
+tfinit-upgrade:
+	terraform init \
+		-backend-config="bucket=${BUCKET}" \
+		-backend-config="key=${BUCKET_KEY}" \
+		-backend-config="region=${REGION}" -upgrade
+
+${ENV}.tfvars:
+	touch ${ENV}.tfvars
+
+.PHONY: checkenv
+checkenv:
+ifndef ENV
+$(error ENV is not set)
+endif
+ifndef APPLICATION
+$(error APPLICATION is not set)
+endif
+
+
+.PHONY: printenv
+printenv:
+	@echo "ENV:       ${ENV}"
+	@echo "SERVICE:    ${SERVICE}"
+    @echo "APPLICATION: ${APPLICATION}"
+	@echo "BUCKET:    ${BUCKET}"
+	@echo "REGION:    ${REGION}"
+	@echo "DOMAIN:    ${DOMAIN}"

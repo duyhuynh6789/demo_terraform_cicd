@@ -56,7 +56,6 @@ jobs:
   tf-validate:
     runs-on: ubuntu-latest
     name: Terraform validate
-    needs: [ tf-format ]
     environment:
       name: ${{ github.ref }}
     steps:
@@ -82,7 +81,6 @@ jobs:
   tf-sec:
     runs-on: ubuntu-latest
     name: Terraform security check
-    needs: [ tf-validate ]
     environment:
       name: ${{ github.ref }}
     steps:
@@ -97,6 +95,37 @@ jobs:
         run: |
           cd terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}
           tfsec .
+
+  tf-plan:
+    runs-on: ubuntu-latest
+    name: Terraform plan
+    needs: [ tf-validate, tf-sec, tf-format ]
+    environment:
+      name: ${{ github.ref }}
+    steps:
+      - name: Checkout the source
+        uses: actions/checkout@v3
+
+      - name: Install manual terraform
+        run: |
+          wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+          sudo apt update && sudo apt install terraform
+
+      - name: Terraform Init
+        run: |
+          cd terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}
+          make init
+
+      - name: Terraform Plan
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.REGION }}
+        run: |
+          cd terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}
+          make plan
+
   # This workflow contains a single job called "build"
   # build-terraform:
   #   if: github.ref == 'refs/heads/main'
