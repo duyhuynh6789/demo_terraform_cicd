@@ -129,6 +129,6 @@ jobs:
           ls -al
           make apply
 
-      - name: AWS Plan Copy
+      - name: Archive tfstate
         run: aws s3 cp terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}/terraform.tfstate s3://${{ vars.DEPLOYMENT_BUCKET }}/${{ vars.ENV_NAME }}/terraform.tfstate
         id: copy
