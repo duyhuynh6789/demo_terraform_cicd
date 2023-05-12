@@ -1,6 +1,6 @@
 # This is a basic workflow to help you get started with Actions
 
-name: CI
+name: CICD
 
 # Controls when the workflow will run
 on:
@@ -19,42 +19,8 @@ on:
       - production
       - staging
 
-  # Allows you to run this workflow manually from the Actions tab
-  # workflow_dispatch:
-  #   inputs:
-  #     BRANCH:
-  #       type: choice
-  #       required: true
-  #       description: Deploy Target Branch
-  #       options:
-  #         - main
-
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # tf-checkenv:
-  #   runs-on: ubuntu-latest
-  #   name: Check the environment
-  #   steps:
-  #     - name: Check the environment base on branch and event
-  #       run: |
-  #         echo "Running on branch ${{ github.ref }}"
-  #         echo "Running on branch ${{ github.ref_name }}"
-  #         echo "Running on branch ${{ github.event.pull_request.base.ref }} "
-
-  #         if [ "${{ github.event_name }}" = "push" ]; then
-  #           if [ "${{ github.ref }}" = "refs/heads/production" ]; then
-  #             echo "env_name=production"  >> $GITHUB_OUTPUT
-  #           elif [ "${{ github.ref }}" = "refs/heads/staging" ]; then
-  #              echo "env_name=staging"  >> $GITHUB_OUTPUT
-  #           elif [ "${{ github.ref }}" = "refs/heads/sandbox" ]; then
-  #             echo "env_name=sandbox"  >> $GITHUB_OUTPUT
-  #           else
-  #             echo "env_name=develop"  >> $GITHUB_OUTPUT
-  #           fi
-  #         fi
-  #       # else
-  #       #    if [ "${{ github.event.pull_request.base.ref }}" = "refs/heads/production" ]; then
-  #       # fi
   tf-format:
     runs-on: ubuntu-latest
     name: Terraform format
@@ -71,8 +37,8 @@ jobs:
           sudo apt update && sudo apt install terraform
 
       - name: Run formatting
+        working-directory: ./terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}
         run: |
-          cd terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}
           terraform fmt -check -recursive -diff
 
   tf-validate:
@@ -91,13 +57,13 @@ jobs:
           sudo apt update && sudo apt install terraform
 
       - name: Terraform Init
+        working-directory: ./terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}
         run: |
-          cd terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}
           terraform init -backend=false
 
       - name: Terraform Validate
+        working-directory: ./terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}
         run: |
-          cd terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}
           terraform validate
 
   tf-sec:
@@ -114,62 +80,14 @@ jobs:
           curl -s https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install_linux.sh | bash
       
       - name: tsec scan
+        working-directory: ./terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}
         run: |
-          cd terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}
           tfsec .
-
-  # tf-plan:
-  #   runs-on: ubuntu-latest
-  #   name: Terraform plan
-  #   needs: [ tf-validate, tf-sec, tf-format ]
-  #   environment:
-  #     name: ${{ github.ref }}
-  #   env:
-  #     AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  #     AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-  #     AWS_DEFAULT_REGION: ${{ secrets.REGION }}
-  #   steps:
-  #     - name: Checkout the source
-  #       uses: actions/checkout@v3
-
-  #     - name: Install manual terraform
-  #       run: |
-  #         wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg
-  #         echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
-  #         sudo apt update && sudo apt install terraform
-
-  #     - name: Get tfstate
-  #       id: copyfrom
-  #       run: aws s3 cp s3://${{ vars.DEPLOYMENT_BUCKET }}/${{ vars.ENV_NAME }}/terraform.tfstate terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}/terraform.tfstate
-  #       continue-on-error: true
-
-  #     - name: Terraform Init
-  #       run: |
-  #         cd terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}
-  #         make init
-
-  #     - name: Terraform Plan
-  #       run: |
-  #         cd terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}
-  #         make plan
-  #         ls -al
-
-  #     - name: Archive tf plan results
-  #       uses: actions/upload-artifact@v3
-  #       with:
-  #         name: tf-plan-artifact
-  #         path: terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}/terraform.tfplan
-      # - name: Cache the terraform plan file
-      #   uses: actions/cache@v3
-      #   with:
-      #     path: terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}/terraform.tfplan
-      #     key: tf-plan-cache-${{ GITHUB_SHA }}
 
   tf-deployment:
     runs-on: ubuntu-latest
     name: Terraform apply
     if: github.event_name == 'push' || github.event.pull_request.merged == true
-    # needs: [ tf-plan ]
     needs: [ tf-validate, tf-sec, tf-format ]
     environment:
       name: ${{ github.ref_name }}
@@ -194,86 +112,22 @@ jobs:
           aws s3 cp s3://${{ vars.DEPLOYMENT_BUCKET }}/${{ vars.ENV_NAME }}/terraform.tfstate terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}/terraform.tfstate
         continue-on-error: true
 
-      # - name: Revice tf plan results
-      #   uses: actions/download-artifact@v3
-      #   with:
-      #     name: tf-plan-artifact
-      #     path: terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}/terraform.tfplan
-          # path: terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}/terraform.tfplan
-      # - name: Cache the terraform plan file
-      #   uses: actions/cache@v3
-      #   with:
-      #     path: terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}/terraform.tfplan
-      #     key: tf-plan-cache-${{ GITHUB_SHA }}
-
       - name: Terraform Init
+        working-directory: ./terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}
         run: |
-          cd terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}
           make init
 
       - name: Terraform Plan
+        working-directory: ./terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}
         run: |
-          cd terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}
           make plan
 
       - name: Terraform Apply
+        working-directory: ./terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}
         run: |
-          cd terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}
           ls -al
           make apply
 
       - name: AWS Plan Copy
-        # if: github.event_name == 'push' && steps.apply.outcome == 'success'
         run: aws s3 cp terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}/terraform.tfstate s3://${{ vars.DEPLOYMENT_BUCKET }}/${{ vars.ENV_NAME }}/terraform.tfstate
         id: copy
-
-  # This workflow contains a single job called "build"
-  # build-terraform:
-  #   if: github.ref == 'refs/heads/main'
-  #   # The type of runner that the job will run on
-  #   runs-on: ubuntu-latest
-  #   env:
-  #     AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  #     AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-  #     AWS_DEFAULT_REGION: ${{ secrets.REGION }}
-
-  #   # Steps represent a sequence of tasks that will be executed as part of the job
-  #   steps:
-  #     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-  #     - name: Checkout the source
-  #       uses: actions/checkout@v3
-
-  #     # Install the latest version of Terraform CLI and configure the Terraform CLI configuration.
-  #     - name: Install manual terraform
-  #       run: |
-  #         wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg
-  #         echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
-  #         sudo apt update && sudo apt install terraform
-
-  #     - name: AWS Plan Copy
-  #       id: copyfrom
-  #       run: aws s3 cp s3://aokumo-develop/terraform.tfstate infrastrure_terraform/terraform.tfstate
-  #       continue-on-error: true
-
-  #     # Initialize a new or existing Terraform working directory by creating initial files, loading any remote state, downloading modules, etc.
-  #     - name: Terraform Init
-  #       run: echo "Run Terraform Init"
-  #       # cd infrastrure_terraform
-  #       # terraform init -input=false
-
-  #     # Generate Terraform Plan and store in .tfplan file
-  #     - name: Terraform Plan
-  #       run: echo "Run Terraform Plan"
-  #       # cd infrastrure_terraform 
-  #       # ls -al
-  #       # terraform plan -var-file="dev.tfvars"
-
-  #     - name: Terraform Apply
-  #       run: |
-  #         cd infrastrure_terraform
-  #         terraform apply -var-file="dev.tfvars" -auto-approve -input=false
-
-  #     - name: AWS Plan Copy
-  #       # if: github.event_name == 'push' && steps.apply.outcome == 'success'
-  #       run: aws s3 cp infrastrure_terraform/terraform.tfstate s3://aokumo-develop/terraform.tfstate
-  #       id: copy
