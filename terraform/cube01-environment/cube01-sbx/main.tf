@@ -10,7 +10,7 @@ resource "aws_vpc" "main" {
   instance_tenancy = var.vpc_instance_tenancy
 
   tags = {
-    Name = "${var.stack_name} | ${var.vpc_tags_name}"
+    Name = "${var.stack_name} | ${var.vpc_tags_name} | ${var.env}"
   }
 }
 
