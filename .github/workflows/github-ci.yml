@@ -115,6 +115,7 @@ jobs:
       - name: Terraform Init
         working-directory: ./terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}
         run: |
+          pwd
           make init
 
       - name: Terraform Plan
