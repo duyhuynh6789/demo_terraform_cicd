@@ -62,3 +62,23 @@ variable "public_route_table_name" {
   type        = string
   default     = "public-route-table"
 }
+
+variable "env" {
+  type    = string
+  default = "dev"
+}
+
+variable "dns_domain" {
+  type    = string
+  default = "dev.uhrsb.de"
+}
+
+variable "service" {
+  type    = string
+  default = "dev"
+}
+
+variable "region" {
+  type    = string
+  default = "us-east-1"
+}
