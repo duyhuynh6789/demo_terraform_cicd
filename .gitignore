@@ -1,8 +1,8 @@
-infrastrure_terraform/.terraform
-infrastrure_terraform/.terraform.lock.hcl
-infrastrure_terraform/terraform.tfplan
-infrastrure_terraform/terraform.tfstate
-infrastrure_terraform/terraform.tfstate.backup
+**/.terraform
+**/.terraform.lock.hcl
+**/terraform.tfplan
+**/terraform.tfstate
+**/terraform.tfstate.backup
 node_modules/
 frontend/dist/
 frontend/package-lock.json
