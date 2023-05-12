@@ -31,7 +31,6 @@ on:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-<<<<<<< HEAD
   # tf-checkenv:
   #   runs-on: ubuntu-latest
   #   name: Check the environment
@@ -56,31 +55,6 @@ jobs:
   #       # else
   #       #    if [ "${{ github.event.pull_request.base.ref }}" = "refs/heads/production" ]; then
   #       # fi
-=======
-  tf-checkenv:
-    runs-on: ubuntu-latest
-    name: Check the environment
-    steps:
-      - name: Check the environment base on branch and event
-        run: |
-          echo "Running on branch ${{ github.ref }}"
-          echo "Running on branch ${{ github.event.pull_request.base.ref }} "
-
-          if [ "${{ github.event_name }}" = "push" ]; then
-            if [ "${{ github.ref }}" = "refs/heads/production" ]; then
-              echo "env_name=production"  >> $GITHUB_OUTPUT
-            elif [ "${{ github.ref }}" = "refs/heads/staging" ]; then
-               echo "env_name=staging"  >> $GITHUB_OUTPUT
-            elif [ "${{ github.ref }}" = "refs/heads/sandbox" ]; then
-              echo "env_name=sandbox"  >> $GITHUB_OUTPUT
-            else
-              echo "env_name=develop"  >> $GITHUB_OUTPUT
-            fi
-          fi
-        # else
-        #    if [ "${{ github.event.pull_request.base.ref }}" = "refs/heads/production" ]; then
-        # fi
->>>>>>> ee1a120 (Test environment)
   tf-format:
     runs-on: ubuntu-latest
     name: Terraform format
@@ -105,11 +79,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Terraform validate
     environment:
-<<<<<<< HEAD
       name: ${{ github.event.pull_request.base.ref || github.ref_name }}
-=======
-      name: ${{ github.event.pull_request.base.ref || github.ref }}
->>>>>>> ee1a120 (Test environment)
     steps:
       - name: Checkout the source
         uses: actions/checkout@v3
@@ -134,11 +104,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Terraform security check
     environment:
-<<<<<<< HEAD
       name: ${{ github.event.pull_request.base.ref || github.ref_name }}
-=======
-      name: ${{ github.event.pull_request.base.ref || github.ref }}
->>>>>>> ee1a120 (Test environment)
     steps:
       - name: Checkout the source
         uses: actions/checkout@v3
