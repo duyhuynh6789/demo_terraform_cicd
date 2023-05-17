@@ -5,12 +5,12 @@ provider "aws" {
 
 # Create a vpc
 #tfsec:ignore:aws-ec2-require-vpc-flow-logs-for-all-vpcs
-resource "aws_vpc" "main" {
+  resource "aws_vpc" "main" {
   cidr_block       = var.vpc_cidr_block
-  instance_tenancy = var.vpc_instance_tenancy
+instance_tenancy = var.vpc_instance_tenancy
 
   tags = {
-    Name = "${var.stack_name} | ${var.vpc_tags_name}"
+          Name = "${var.stack_name} | ${var.vpc_tags_name}"
   }
 }
 
