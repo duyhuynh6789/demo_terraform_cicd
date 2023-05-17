@@ -49,87 +49,111 @@ jobs:
         run: |
           terraform fmt -check -recursive -diff
 
-  # tf-validate:
-  #   runs-on: ubuntu-latest
-  #   name: Terraform validate
-  #   environment:
-  #     name: ${{ github.event.pull_request.base.ref || github.ref_name }}
-  #   steps:
-  #     - name: Checkout the source
-  #       uses: actions/checkout@v3
+  tf-validate:
+    runs-on: ubuntu-latest
+    name: Terraform validate
+    strategy:
+      matrix:
+        source: [
+          cube01-infra-auth,
+          cube01-environment,
+          cube01-infra-core,
+          cube01-infra-eks
+        ]
+    environment:
+      name: ${{ github.event.pull_request.base.ref || github.ref_name }}
+    steps:
+      - name: Checkout the source
+        uses: actions/checkout@v3
 
-  #     - name: Install manual terraform
-  #       run: |
-  #         wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg
-  #         echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
-  #         sudo apt update && sudo apt install terraform
+      - name: Install manual terraform
+        run: |
+          wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+          sudo apt update && sudo apt install terraform
 
-  #     - name: Terraform Init
-  #       working-directory: ./terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}
-  #       run: |
-  #         terraform init -backend=false
+      - name: Terraform Init
+        working-directory: ./terraform/${{ matrix.source }}/cube01-${{ vars.ENV_NAME }}
+        run: |
+          terraform init -backend=false
 
-  #     - name: Terraform Validate
-  #       working-directory: ./terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}
-  #       run: |
-  #         terraform validate
+      - name: Terraform Validate
+        working-directory: ./terraform/${{ matrix.source }}/cube01-${{ vars.ENV_NAME }}
+        run: |
+          terraform validate
 
-  # tf-sec:
-    # runs-on: ubuntu-latest
-    # name: Terraform security check
-    # environment:
-    #   name: ${{ github.event.pull_request.base.ref || github.ref_name }}
-    # steps:
-    #   - name: Checkout the source
-    #     uses: actions/checkout@v3
+  tf-sec:
+    runs-on: ubuntu-latest
+    name: Terraform security check
+    strategy:
+      matrix:
+        source: [
+          cube01-infra-auth,
+          cube01-environment,
+          cube01-infra-core,
+          cube01-infra-eks
+        ]
+    environment:
+      name: ${{ github.event.pull_request.base.ref || github.ref_name }}
+    steps:
+      - name: Checkout the source
+        uses: actions/checkout@v3
 
-    #   - name: Install tfsec
-    #     run: |
-    #       curl -s https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install_linux.sh | bash
+      - name: Install tfsec
+        run: |
+          curl -s https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install_linux.sh | bash
       
-    #   - name: tsec scan
-    #     working-directory: ./terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}
-    #     run: |
-    #       tfsec .
+      - name: tsec scan
+        working-directory: ./terraform/${{ matrix.source }}/cube01-${{ vars.ENV_NAME }}
+        run: |
+          tfsec .
 
-  # tf-deployment:
-  #   runs-on: ubuntu-latest
-  #   name: Terraform apply
-  #   if: github.event_name == 'push' || github.event.pull_request.merged == true
-  #   needs: [ tf-validate, tf-sec, tf-format ]
-  #   environment:
-  #     name: ${{ github.ref_name }}
-  #   env:
-  #     AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  #     AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-  #     AWS_DEFAULT_REGION: ${{ secrets.REGION }}
-  #     ENV: ${{ vars.ENV_NAME }}
-  #   steps:
-  #     - name: Checkout the source
-  #       uses: actions/checkout@v3
+  tf-deployment:
+    runs-on: ubuntu-latest
+    name: Terraform apply
+    if: github.event_name == 'push' || github.event.pull_request.merged == true
+    needs: [ tf-validate, tf-sec, tf-format ]
+    strategy:
+      matrix:
+        source: [
+          cube01-infra-auth,
+          cube01-environment,
+          cube01-infra-core,
+          cube01-infra-eks
+        ]
+    environment:
+      name: ${{ github.ref_name }}
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: ${{ secrets.REGION }}
+      ENV: ${{ vars.ENV_NAME }}
+    steps:
+      - name: Checkout the source
+        uses: actions/checkout@v3
 
-  #     - name: Install manual terraform
-  #       run: |
-  #         wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg
-  #         echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
-  #         sudo apt update && sudo apt install terraform
+      - name: Install manual terraform
+        run: |
+          wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+          sudo apt update && sudo apt install terraform
 
-  #     - name: Get tfstate
-  #       id: copyfrom
-  #       run: |
-  #         aws s3 cp s3://${{ vars.DEPLOYMENT_BUCKET }}/${{ vars.ENV_NAME }}/terraform.tfstate terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}/terraform.tfstate
-  #       continue-on-error: true
+      - name: Get tfstate
+        id: copyfrom
+        run: |
+          aws s3 cp s3://${{ vars.DEPLOYMENT_BUCKET }}/${{ vars.ENV_NAME }}/terraform.tfstate terraform/${{ matrix.source }}/cube01-${{ vars.ENV_NAME }}/terraform.tfstate
+        continue-on-error: true
 
-  #     - name: Terraform Init
-  #       working-directory: ./terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}
-  #       run: |
-  #         pwd
-  #         make init
+      - name: Terraform Init
+        working-directory: ./terraform/${{ matrix.source }}/cube01-${{ vars.ENV_NAME }}
+        run: |
+          pwd
+          make init
 
-  #     - name: Terraform Plan
-  #       working-directory: ./terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}
-  #       run: |
-  #         make plan
+      - name: Terraform Plan
+        working-directory: ./terraform/${{ matrix.source }}/cube01-${{ vars.ENV_NAME }}
+        run: |
+          make plan
 
   #     - name: Terraform Apply
   #       working-directory: ./terraform/cube01-environment/cube01-${{ vars.ENV_NAME }}
