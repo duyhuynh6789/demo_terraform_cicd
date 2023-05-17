@@ -1,0 +1,68 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CICD
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the "main" branch
+  push:
+    branches: 
+      - develop
+      - sandbox
+      - production
+      - staging
+
+  pull_request:
+    branches:
+      - develop
+      - sandbox
+      - production
+      - staging
+
+jobs:
+  pre-matrix:
+    runs-on: ubuntu-latest
+    name: check the source code change
+    steps:
+      - name: Checkout the source
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
+
+      - name: Check the list file change
+        shell: pwsh
+        id: check_file_changed
+        run: |
+            $matrix_list
+            $diff = git diff --name-only HEAD^ HEAD
+            if(($diff | Where-Object { $_ -match '^terraform/cube01-environment/'})) {
+              $matrix_list += 'cube01-environment'
+            }
+            if(($diff | Where-Object { $_ -match '^terraform/cube01-infra-auth/'})) {
+              $matrix_list += 'cube01-infra-auth'
+            }
+            if(($diff | Where-Object { $_ -match '^terraform/cube01-infra-core/'})) {
+              $matrix_list += 'cube01-infra-core'
+            }
+            if(($diff | Where-Object { $_ -match '^terraform/cube01-infra-eks/'})) {
+              $matrix_list += 'cube01-infra-eks'
+            }
+            echo "count_matrix=$matrix_list.Count" >> $env:GITHUB_OUTPUT
+            $contents=$matrix_list -join "','"
+            $ast="[ '$contents' ]"
+            echo "matrix=$ast" >> $env:GITHUB_OUTPUT
+    outputs:
+      matrix: ${{ steps.check_file_changed.outputs.matrix }}
+      count_matrix: ${{ steps.check_file_changed.outputs.count_matrix }}
+
+  call-work-flows:
+    needs: pre-matrix
+    if: needs.pre-matrix.outputs.count_matrix > 0
+    strategy:
+      fail-fast: false
+      matrix:
+        source: ${{ fromJson(needs.pre-matrix.outputs.matrix) }}
+    uses: ./.github/workflows/reuse-workflow.yml
+    secrets: inherit
+    with:
+      config-path: ${{ matrix.source }}
