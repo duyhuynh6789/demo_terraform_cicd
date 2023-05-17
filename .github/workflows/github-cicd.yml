@@ -35,21 +35,28 @@ jobs:
         run: |
             $matrix_list
             $diff = git diff --name-only HEAD^ HEAD
-            if(($diff | Where-Object { $_ -match '^terraform/cube01-environment/'})) {
+            if(($diff | Where-Object { $_ -match '^terraform/cube01-environment/'}).Length -gt 0) {
+              echo "Has cube01-environment"
               $matrix_list += 'cube01-environment'
             }
-            if(($diff | Where-Object { $_ -match '^terraform/cube01-infra-auth/'})) {
+            if(($diff | Where-Object { $_ -match '^terraform/cube01-infra-auth/'}).Length -gt 0) {
+              echo "Has cube01-infra-auth"
               $matrix_list += 'cube01-infra-auth'
             }
-            if(($diff | Where-Object { $_ -match '^terraform/cube01-infra-core/'})) {
+            if(($diff | Where-Object { $_ -match '^terraform/cube01-infra-core/'}).Length -gt 0) {
+              echo "Has cube01-infra-core"
               $matrix_list += 'cube01-infra-core'
             }
-            if(($diff | Where-Object { $_ -match '^terraform/cube01-infra-eks/'})) {
+            if(($diff | Where-Object { $_ -match '^terraform/cube01-infra-eks/'}).Length -gt 0) {
+              echo "Has cube01-infra-eks"
               $matrix_list += 'cube01-infra-eks'
             }
-            echo "count_matrix=$matrix_list.Count" >> $env:GITHUB_OUTPUT
+            $countm=$matrix_list.Count
+            echo "Number of list: $countm"
+            echo "count_matrix=$countm" >> $env:GITHUB_OUTPUT
             $contents=$matrix_list -join "','"
             $ast="[ '$contents' ]"
+            echo "$ast"
             echo "matrix=$ast" >> $env:GITHUB_OUTPUT
     outputs:
       matrix: ${{ steps.check_file_changed.outputs.matrix }}
