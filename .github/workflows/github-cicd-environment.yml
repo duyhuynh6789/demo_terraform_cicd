@@ -1,0 +1,162 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CICD environment
+
+# Controls when the workflow will run
+on:
+  workflow_dispatch: # manual trigger
+  push:
+    branches-ignore:
+      - 'main'
+      - 'develop'
+      - 'release'
+    paths:
+      - "terraform/cube01-environment/**"
+      - '.github/workflows/environment.yaml'
+
+  pull_request:
+    branches:
+      - main
+      - develop
+      - release 
+    types: [closed]
+    paths:
+      - "terraform/cube01-environment/**"
+      - '.github/workflows/github-cicd-enronment.yaml'
+
+jobs:
+  # call-work-flows:
+  #   uses: ./.github/workflows/tfcicd.yml
+  #   secrets: inherit
+  #   with:
+  #     config-path: "cube01-environment"
+  tf-validate:
+    runs-on: ubuntu-latest
+    name: Terraform validate
+    environment:
+      name: ${{ github.event.pull_request.base.ref || github.ref_name }}
+
+    permissions:
+      id-token: write
+      actions: write
+      checks: write
+      contents: read
+      deployments: read
+      issues: read
+      packages: write
+      pull-requests: read
+      repository-projects: read
+      security-events: read
+      statuses: read
+
+    steps:
+      - name: Checkout the source
+        uses: actions/checkout@v3
+
+      - name: Setup AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/cucon-${{ vars.AWS_ENVIRONMENT }}-iam-github-actions
+          aws-region: ap-northeast-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+
+      - name: Terraform Init
+        working-directory: terraform/cube01-environment/cube01-${{ vars.AWS_ENVIRONMENT }}
+        run: |
+          make init
+
+      - name: Run formatting
+        working-directory: terraform/cube01-environment/cube01-${{ vars.AWS_ENVIRONMENT }}
+        run: |
+          make format-check
+
+      - name: Terraform Validate
+        working-directory: terraform/cube01-environment/cube01-${{ vars.AWS_ENVIRONMENT }}
+        run: |
+          make validate
+
+  tf-sec:
+    runs-on: ubuntu-latest
+    name: Terraform security check
+    environment:
+      name: ${{ github.event.pull_request.base.ref || github.ref_name }}
+    steps:
+      - name: Checkout the source
+        uses: actions/checkout@v3
+
+      - name: Install tfsec
+        run: |
+          curl -s https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install_linux.sh | bash
+      
+      - name: tsec scan
+        working-directory: terraform/cube01-environment/cube01-${{ vars.AWS_ENVIRONMENT }}
+        run: |
+          tfsec .
+
+  tf-deployment:
+    runs-on: ubuntu-latest
+    name: Terraform apply
+    if: github.event_name == 'push' || github.event.pull_request.merged == true
+    needs: [tf-validate, tf-sec]
+    environment:
+      name: ${{ github.ref_name }}
+    env:
+      ENV: ${{ vars.AWS_ENVIRONMENT }}
+    steps:
+      - name: Checkout the source
+        uses: actions/checkout@v3
+
+      - name: Setup AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/cucon-${{ vars.AWS_ENVIRONMENT }}-iam-github-actions
+          aws-region: ap-northeast-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+
+      - name: Get tfstate
+        id: copyfrom
+        run: |
+          aws s3 cp s3://${{ vars.DEPLOYMENT_BUCKET }}/${{ vars.AWS_ENVIRONMENT }}/terraform.tfstate terraform/cube01-environment/cube01-${{ vars.AWS_ENVIRONMENT }}/terraform.tfstate
+        continue-on-error: true
+
+      - name: Terraform Init
+        working-directory: ./terraform/cube01-environment/cube01-${{ vars.AWS_ENVIRONMENT }}
+        run: |
+          pwd
+          make init
+
+      - name: Terraform Plan
+        working-directory: ./terraform/cube01-environment/cube01-${{ vars.AWS_ENVIRONMENT }}
+        run: |
+          make plan
+
+      # - name: Terraform Apply
+      #   working-directory: ./terraform/cube01-environment/cube01-${{ vars.AWS_ENVIRONMENT }}
+      #   run: |
+      #     ls -al
+      #     make apply
+
+      # - name: Archive tfstate
+      #   run: aws s3 cp terraform/cube01-environment/cube01-${{ vars.AWS_ENVIRONMENT }}/terraform.tfstate s3://${{ vars.DEPLOYMENT_BUCKET }}/cube01-environment/${{ vars.AWS_ENVIRONMENT }}/terraform.tfstate
+      #   id: copy
+
+
+  slack_notification:
+    name: Slack Notification
+    needs: [tf-validate, tf-deployment, tf-sec]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send summary to Slack
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          author_name: GitHub Actions
+          fields: repo,message,commit,author,action
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
